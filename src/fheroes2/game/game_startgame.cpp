@@ -761,9 +761,16 @@ fheroes2::GameMode Interface::AdventureMap::StartGame()
     // order needs to resume right after whoever's turn was active when the sender saved, rather than
     // either restarting the round from the first player, or - as the vanilla resume-from-save logic
     // below would otherwise try to do - replaying conf.CurrentColor()'s own turn (wrong here, since
-    // that player's turn already finished on the sending machine). sortedPlayers is repositioned for
-    // this once it has been built, below.
+    // that player's turn already finished on the sending machine).
+    //
+    // This is handled with a one-shot forward skip (networkSkipTurns below, checked inside the `for`
+    // loop) rather than by reordering sortedPlayers: a rotate() would just move the already-processed
+    // prefix of this round to the end of the same array instead of dropping it, so the `for` loop
+    // would eventually wrap around and hand off to them a second time - which starves the `for` loop
+    // of ever reaching a natural end, so the enclosing `while` loop never starts a genuinely new round
+    // and world.NewDay() never fires again. A plain forward skip never revisits anyone.
     bool networkJustResumedThisRound = Game::consumePendingNetworkResumeMidRound();
+    bool networkSkipTurns = networkJustResumedThisRound && conf.CurrentColor() != PlayerColor::NONE;
 
     bool skipTurns = isLoadedFromSave && !networkJustResumedThisRound;
 
@@ -775,19 +782,6 @@ fheroes2::GameMode Interface::AdventureMap::StartGame()
 
     std::vector<Player *> sortedPlayers = conf.GetPlayers().getVector();
     std::sort( sortedPlayers.begin(), sortedPlayers.end(), SortPlayers );
-
-    if ( networkJustResumedThisRound ) {
-        const PlayerColor lastActiveColor = conf.CurrentColor();
-        if ( lastActiveColor != PlayerColor::NONE ) {
-            const auto lastActiveIt = std::find_if( sortedPlayers.begin(), sortedPlayers.end(),
-                                                     [lastActiveColor]( const Player * player ) { return player->isColor( lastActiveColor ); } );
-            if ( lastActiveIt != sortedPlayers.end() ) {
-                std::rotate( sortedPlayers.begin(), std::next( lastActiveIt ), sortedPlayers.end() );
-            }
-        }
-        // If lastActiveColor is NONE, this is the very first hand-off of a brand-new LAN game (no
-        // player has taken a turn yet) - start from the beginning of sortedPlayers, no rotation needed.
-    }
 
     if ( !isLoadedFromSave || world.CountDay() == 1 ) {
         // Clear fog around heroes, castles and mines for all players when starting a new map or if the save was done at the first day.
@@ -852,6 +846,16 @@ fheroes2::GameMode Interface::AdventureMap::StartGame()
                 if ( !player->isColor( conf.CurrentColor() ) ) {
                     continue;
                 }
+            }
+
+            if ( networkSkipTurns ) {
+                // Skip forward past everyone up to and including whoever's turn was active when the
+                // LAN save was sent - they already went earlier this round, on another machine.
+                const bool isLastActivePlayer = player->isColor( conf.CurrentColor() );
+                if ( isLastActivePlayer ) {
+                    networkSkipTurns = false;
+                }
+                continue;
             }
 
             // Player with a color equal to conf.CurrentColor() has been found, there is no need for further skips
