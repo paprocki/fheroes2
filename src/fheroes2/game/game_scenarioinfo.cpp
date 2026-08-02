@@ -40,6 +40,7 @@
 #include "game_assets.h"
 #include "game_exit.h"
 #include "game_hotkeys.h"
+#include "game_lan_setup.h"
 #include "game_mainmenu_ui.h"
 #include "game_mode.h"
 #include "icn.h"
@@ -518,6 +519,12 @@ fheroes2::GameMode Game::SelectScenario( const uint8_t humanPlayerCount )
     const fheroes2::GameMode result = ChooseNewMap( maps, humanPlayerCount );
     if ( result != fheroes2::GameMode::START_GAME ) {
         return result;
+    }
+
+    // Offer to turn this into a LAN Hot Seat game. Only makes sense for Hot Seat scenarios with more
+    // than one human player; LanSetupHotSeat() itself also offers a "play locally instead" option.
+    if ( Settings::Get().IsGameType( Game::TYPE_HOTSEAT ) && humanPlayerCount > 1 && !Game::LanSetupHotSeat() ) {
+        return fheroes2::GameMode::MAIN_MENU;
     }
 
     return LoadNewMap();
