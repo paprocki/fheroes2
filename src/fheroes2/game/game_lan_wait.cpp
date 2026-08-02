@@ -24,7 +24,6 @@
 
 #include "audio.h"
 #include "audio_manager.h"
-#include "color.h"
 #include "cursor.h"
 #include "dialog.h"
 #include "game.h"
@@ -39,7 +38,6 @@
 #include "screen.h"
 #include "settings.h"
 #include "system.h"
-#include "tools.h"
 #include "translations.h"
 #include "ui_button.h"
 #include "ui_dialog.h"
@@ -74,10 +72,7 @@ fheroes2::GameMode Game::LanWaitForTurn()
     fheroes2::Text header( _( "Waiting for LAN Turn" ), fheroes2::FontType::normalYellow() );
     header.draw( area.x + ( area.width - header.width() ) / 2, area.y + 10, display );
 
-    std::string bodyString = _( "Waiting to receive the turn for %{color} over the network..." );
-    StringReplace( bodyString, "%{color}", Color::String( session.getLocalColor() ) );
-
-    fheroes2::Text body( std::move( bodyString ), fheroes2::FontType::normalWhite() );
+    fheroes2::Text body( _( "Waiting to receive the turn..." ), fheroes2::FontType::normalWhite() );
     body.draw( area.x + ( area.width - body.width() ) / 2, area.y + 45, display );
 
     const bool isEvilInterface = Settings::Get().isEvilInterfaceEnabled();
