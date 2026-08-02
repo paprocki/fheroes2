@@ -1,6 +1,6 @@
 /***************************************************************************
  *   fheroes2: https://github.com/ihhub/fheroes2                           *
- *   Copyright (C) 2021 - 2025                                             *
+ *   Copyright (C) 2026                                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -20,42 +20,12 @@
 
 #pragma once
 
-namespace fheroes2
+#include "game_mode.h"
+
+namespace Game
 {
-    enum class GameMode : int
-    {
-        CANCEL = 0,
-        QUIT_GAME,
-        MAIN_MENU,
-        NEW_GAME,
-        LOAD_GAME,
-        HIGHSCORES_STANDARD,
-        HIGHSCORES_CAMPAIGN,
-        CREDITS,
-        NEW_STANDARD,
-        NEW_SUCCESSION_WARS_CAMPAIGN,
-        NEW_PRICE_OF_LOYALTY_CAMPAIGN,
-        NEW_BATTLE_ONLY,
-        LOAD_STANDARD,
-        LOAD_CAMPAIGN,
-        LOAD_HOT_SEAT,
-        LAN_WAITING,
-        // Do NOT change the order of the below 6 entries!
-        SELECT_SCENARIO_ONE_HUMAN_PLAYER,
-        SELECT_SCENARIO_TWO_HUMAN_PLAYERS,
-        SELECT_SCENARIO_THREE_HUMAN_PLAYERS,
-        SELECT_SCENARIO_FOUR_HUMAN_PLAYERS,
-        SELECT_SCENARIO_FIVE_HUMAN_PLAYERS,
-        SELECT_SCENARIO_SIX_HUMAN_PLAYERS,
-        START_GAME,
-        START_BATTLE_ONLY_MODE,
-        SAVE_GAME,
-        END_TURN,
-        SELECT_CAMPAIGN_SCENARIO,
-        COMPLETE_CAMPAIGN_SCENARIO,
-        COMPLETE_CAMPAIGN_SCENARIO_FROM_LOAD_FILE,
-        EDITOR_MAIN_MENU,
-        EDITOR_NEW_MAP,
-        EDITOR_LOAD_MAP
-    };
+    // Listens on LAN::Session::Get().getPort() for the incoming save file for the locally-played
+    // color. Blocks (running its own event loop) until either a file arrives - at which point it is
+    // loaded and play resumes - or the user cancels back to the Main Menu.
+    fheroes2::GameMode LanWaitForTurn();
 }

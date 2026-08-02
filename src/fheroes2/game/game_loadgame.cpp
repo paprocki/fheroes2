@@ -35,6 +35,7 @@
 #include "dir.h"
 #include "game_hotkeys.h"
 #include "game_io.h"
+#include "game_lan_setup.h"
 #include "game_mainmenu_ui.h"
 #include "game_mode.h"
 #include "icn.h"
@@ -74,6 +75,15 @@ fheroes2::GameMode Game::LoadCampaign()
 fheroes2::GameMode Game::LoadHotseat()
 {
     Settings::Get().SetGameType( Game::TYPE_HOTSEAT );
+
+    const int answer = fheroes2::showStandardTextMessage(
+        {}, _( "Join a LAN Hot Seat game? This waits to receive the current turn from another player's PC over the network, instead of loading a save file from this PC." ),
+        Dialog::YES | Dialog::NO );
+
+    if ( answer == Dialog::YES ) {
+        return Game::JoinLanGame();
+    }
+
     return DisplayLoadGameDialog();
 }
 

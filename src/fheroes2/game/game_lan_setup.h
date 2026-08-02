@@ -1,6 +1,6 @@
 /***************************************************************************
  *   fheroes2: https://github.com/ihhub/fheroes2                           *
- *   Copyright (C) 2021 - 2025                                             *
+ *   Copyright (C) 2026                                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -20,42 +20,25 @@
 
 #pragma once
 
-namespace fheroes2
+#include "game_mode.h"
+
+namespace Game
 {
-    enum class GameMode : int
-    {
-        CANCEL = 0,
-        QUIT_GAME,
-        MAIN_MENU,
-        NEW_GAME,
-        LOAD_GAME,
-        HIGHSCORES_STANDARD,
-        HIGHSCORES_CAMPAIGN,
-        CREDITS,
-        NEW_STANDARD,
-        NEW_SUCCESSION_WARS_CAMPAIGN,
-        NEW_PRICE_OF_LOYALTY_CAMPAIGN,
-        NEW_BATTLE_ONLY,
-        LOAD_STANDARD,
-        LOAD_CAMPAIGN,
-        LOAD_HOT_SEAT,
-        LAN_WAITING,
-        // Do NOT change the order of the below 6 entries!
-        SELECT_SCENARIO_ONE_HUMAN_PLAYER,
-        SELECT_SCENARIO_TWO_HUMAN_PLAYERS,
-        SELECT_SCENARIO_THREE_HUMAN_PLAYERS,
-        SELECT_SCENARIO_FOUR_HUMAN_PLAYERS,
-        SELECT_SCENARIO_FIVE_HUMAN_PLAYERS,
-        SELECT_SCENARIO_SIX_HUMAN_PLAYERS,
-        START_GAME,
-        START_BATTLE_ONLY_MODE,
-        SAVE_GAME,
-        END_TURN,
-        SELECT_CAMPAIGN_SCENARIO,
-        COMPLETE_CAMPAIGN_SCENARIO,
-        COMPLETE_CAMPAIGN_SCENARIO_FROM_LOAD_FILE,
-        EDITOR_MAIN_MENU,
-        EDITOR_NEW_MAP,
-        EDITOR_LOAD_MAP
-    };
+    // Offers to turn the Hot Seat game currently being set up into a LAN Hot Seat game:
+    // pick which human color is played on this PC and enter every other human color's
+    // peer IP address, storing the result in LAN::Session. Called after the player has
+    // finished assigning colors/human-AI control for the scenario but before the map is
+    // actually loaded.
+    //
+    // Returns true if it is fine to proceed to loading the map - either because LAN mode
+    // was configured successfully, or because the user explicitly chose to play a plain
+    // local Hot Seat game instead. Returns false only if the user cancelled out of LAN
+    // setup partway through, in which case the caller should abandon starting the game
+    // entirely (consistent with cancelling any other step of New Game setup).
+    bool LanSetupHotSeat();
+
+    // Configures this PC as a non-host participant in a LAN Hot Seat game: asks which color is played
+    // locally and which port to listen on, then transitions to the "Waiting for LAN Turn" screen.
+    // Returns fheroes2::GameMode::MAIN_MENU if the user cancels.
+    fheroes2::GameMode JoinLanGame();
 }

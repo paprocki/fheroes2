@@ -1,6 +1,6 @@
 /***************************************************************************
  *   fheroes2: https://github.com/ihhub/fheroes2                           *
- *   Copyright (C) 2021 - 2025                                             *
+ *   Copyright (C) 2026                                                    *
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -18,44 +18,41 @@
  *   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.             *
  ***************************************************************************/
 
-#pragma once
+#include "lan_session.h"
 
-namespace fheroes2
+namespace LAN
 {
-    enum class GameMode : int
+    Session & Session::Get()
     {
-        CANCEL = 0,
-        QUIT_GAME,
-        MAIN_MENU,
-        NEW_GAME,
-        LOAD_GAME,
-        HIGHSCORES_STANDARD,
-        HIGHSCORES_CAMPAIGN,
-        CREDITS,
-        NEW_STANDARD,
-        NEW_SUCCESSION_WARS_CAMPAIGN,
-        NEW_PRICE_OF_LOYALTY_CAMPAIGN,
-        NEW_BATTLE_ONLY,
-        LOAD_STANDARD,
-        LOAD_CAMPAIGN,
-        LOAD_HOT_SEAT,
-        LAN_WAITING,
-        // Do NOT change the order of the below 6 entries!
-        SELECT_SCENARIO_ONE_HUMAN_PLAYER,
-        SELECT_SCENARIO_TWO_HUMAN_PLAYERS,
-        SELECT_SCENARIO_THREE_HUMAN_PLAYERS,
-        SELECT_SCENARIO_FOUR_HUMAN_PLAYERS,
-        SELECT_SCENARIO_FIVE_HUMAN_PLAYERS,
-        SELECT_SCENARIO_SIX_HUMAN_PLAYERS,
-        START_GAME,
-        START_BATTLE_ONLY_MODE,
-        SAVE_GAME,
-        END_TURN,
-        SELECT_CAMPAIGN_SCENARIO,
-        COMPLETE_CAMPAIGN_SCENARIO,
-        COMPLETE_CAMPAIGN_SCENARIO_FROM_LOAD_FILE,
-        EDITOR_MAIN_MENU,
-        EDITOR_NEW_MAP,
-        EDITOR_LOAD_MAP
-    };
+        static Session session;
+        return session;
+    }
+
+    std::string Session::getPeerIp( const PlayerColor color ) const
+    {
+        const int index = Color::GetIndex( color );
+        if ( index < 0 || index >= static_cast<int>( _peerIpByColorIndex.size() ) ) {
+            return {};
+        }
+
+        return _peerIpByColorIndex[index];
+    }
+
+    void Session::setPeerIp( const PlayerColor color, std::string ip )
+    {
+        const int index = Color::GetIndex( color );
+        if ( index < 0 || index >= static_cast<int>( _peerIpByColorIndex.size() ) ) {
+            return;
+        }
+
+        _peerIpByColorIndex[index] = std::move( ip );
+    }
+
+    void Session::reset()
+    {
+        _enabled = false;
+        _localColor = PlayerColor::NONE;
+        _port = defaultPort;
+        _peerIpByColorIndex.fill( {} );
+    }
 }

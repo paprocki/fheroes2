@@ -47,6 +47,7 @@
 #include "game_exit.h"
 #include "game_hotkeys.h"
 #include "game_intro.h"
+#include "game_lan_wait.h"
 #include "game_mainmenu_ui.h"
 #include "game_mode.h"
 #include "game_video.h"
@@ -183,6 +184,9 @@ void Game::runMainGameLoop()
             break;
         case fheroes2::GameMode::LOAD_HOT_SEAT:
             result = Game::LoadHotseat();
+            break;
+        case fheroes2::GameMode::LAN_WAITING:
+            result = Game::LanWaitForTurn();
             break;
         case fheroes2::GameMode::SELECT_SCENARIO_ONE_HUMAN_PLAYER:
         case fheroes2::GameMode::SELECT_SCENARIO_TWO_HUMAN_PLAYERS:

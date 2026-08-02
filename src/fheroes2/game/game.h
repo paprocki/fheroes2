@@ -91,6 +91,14 @@ namespace Game
     // If display fade-in state is set reset it to false and return true. Otherwise return false.
     bool validateDisplayFadeIn();
 
+    // Set by the LAN "Waiting for Turn" screen immediately before calling Game::Load() on a save
+    // received over the network, so that Interface::AdventureMap::StartGame() knows to resume the
+    // turn order right after whoever's turn was active when the sender saved, instead of restarting
+    // the round from the first player. Transient: never persisted in any save file.
+    void setPendingNetworkResumeMidRound( const bool value );
+    // Returns the current value and resets it to false.
+    bool consumePendingNetworkResumeMidRound();
+
     PlayerColorsSet GetKingdomColors();
     PlayerColorsSet GetActualKingdomColors();
     void DialogPlayers( const PlayerColor color, std::string title, std::string message );

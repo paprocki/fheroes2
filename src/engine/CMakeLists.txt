@@ -51,4 +51,5 @@ target_link_libraries(
 	$<$<BOOL:${ENABLE_IMAGE}>:PNG::PNG>
 	Threads::Threads
 	ZLIB::ZLIB
+	$<$<PLATFORM_ID:Windows>:ws2_32>
 	)

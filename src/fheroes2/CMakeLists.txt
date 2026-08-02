@@ -101,6 +101,7 @@ target_include_directories(
 	kingdom
 	maps
 	monster
+	network
 	resource
 	spell
 	system

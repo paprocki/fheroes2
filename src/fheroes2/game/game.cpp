@@ -63,6 +63,7 @@ namespace
 
     bool updateSoundsOnFocusUpdate = true;
     bool needFadeIn{ true };
+    bool pendingNetworkResumeMidRound{ false };
 
     uint32_t maps_animation_frame = 0;
 }
@@ -179,6 +180,18 @@ bool Game::validateDisplayFadeIn()
     }
 
     return false;
+}
+
+void Game::setPendingNetworkResumeMidRound( const bool value )
+{
+    pendingNetworkResumeMidRound = value;
+}
+
+bool Game::consumePendingNetworkResumeMidRound()
+{
+    const bool value = pendingNetworkResumeMidRound;
+    pendingNetworkResumeMidRound = false;
+    return value;
 }
 
 uint32_t Game::getAdventureMapAnimationIndex()

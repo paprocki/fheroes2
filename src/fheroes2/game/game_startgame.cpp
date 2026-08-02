@@ -64,6 +64,7 @@
 #include "interface_radar.h"
 #include "interface_status.h"
 #include "kingdom.h"
+#include "lan_session.h"
 #include "localevent.h"
 #include "logging.h"
 #include "m82.h"
@@ -75,10 +76,12 @@
 #include "monster.h"
 #include "mp2.h"
 #include "mus.h"
+#include "network.h"
 #include "players.h"
 #include "resource.h"
 #include "screen.h"
 #include "settings.h"
+#include "system.h"
 #include "tools.h"
 #include "translations.h"
 #include "ui_dialog.h"
@@ -753,7 +756,16 @@ fheroes2::GameMode Interface::AdventureMap::StartGame()
     redraw( REDRAW_GAMEAREA | REDRAW_RADAR | REDRAW_ICONS | REDRAW_BUTTONS | REDRAW_STATUS | REDRAW_BORDER );
 
     bool isLoadedFromSave = conf.LoadedGameVersion();
-    bool skipTurns = isLoadedFromSave;
+
+    // If this save was just received over LAN and loaded by the "Waiting for Turn" screen, the turn
+    // order needs to resume right after whoever's turn was active when the sender saved, rather than
+    // either restarting the round from the first player, or - as the vanilla resume-from-save logic
+    // below would otherwise try to do - replaying conf.CurrentColor()'s own turn (wrong here, since
+    // that player's turn already finished on the sending machine). sortedPlayers is repositioned for
+    // this once it has been built, below.
+    bool networkJustResumedThisRound = Game::consumePendingNetworkResumeMidRound();
+
+    bool skipTurns = isLoadedFromSave && !networkJustResumedThisRound;
 
     // Set need of fade-in of game screen.
     Game::setDisplayFadeIn();
@@ -763,6 +775,20 @@ fheroes2::GameMode Interface::AdventureMap::StartGame()
 
     std::vector<Player *> sortedPlayers = conf.GetPlayers().getVector();
     std::sort( sortedPlayers.begin(), sortedPlayers.end(), SortPlayers );
+
+    if ( networkJustResumedThisRound ) {
+        const PlayerColor lastActiveColor = conf.CurrentColor();
+        if ( lastActiveColor != PlayerColor::NONE ) {
+            const auto lastActiveIt = std::find_if( sortedPlayers.begin(), sortedPlayers.end(),
+                                                     [lastActiveColor]( const Player * player ) { return player->isColor( lastActiveColor ); } );
+            if ( lastActiveIt != sortedPlayers.end() ) {
+                std::rotate( sortedPlayers.begin(), std::next( lastActiveIt ), sortedPlayers.end() );
+            }
+        }
+        // If lastActiveColor is NONE, this is the very first hand-off of a brand-new LAN game (no
+        // player has taken a turn yet) - start from the beginning of sortedPlayers, no rotation needed.
+    }
+
     if ( !isLoadedFromSave || world.CountDay() == 1 ) {
         // Clear fog around heroes, castles and mines for all players when starting a new map or if the save was done at the first day.
         for ( Player * player : sortedPlayers ) {
@@ -841,7 +867,27 @@ fheroes2::GameMode Interface::AdventureMap::StartGame()
                 _radar.SetRedraw( REDRAW_RADAR_CURSOR );
 
                 switch ( kingdom.GetControl() ) {
-                case CONTROL_HUMAN:
+                case CONTROL_HUMAN: {
+                    LAN::Session & lanSession = LAN::Session::Get();
+                    if ( lanSession.isEnabled() && lanSession.getLocalColor() != playerColor ) {
+                        // This kingdom's human player is on a different physical PC. Everything up to
+                        // and including our own most recently finished turn (plus any AI turns already
+                        // processed automatically since then, earlier in this same loop) is already
+                        // captured in the current in-memory state - hand it off now instead of trying
+                        // to run their turn here.
+                        const std::string handoffPath = System::concatPath( Game::GetSaveDir(), "LAN_OUTGOING" + Game::GetSaveFileExtension() );
+
+                        if ( !Game::Save( handoffPath ) || !Network::sendFile( lanSession.getPeerIp( playerColor ), lanSession.getPort(), handoffPath ) ) {
+                            fheroes2::showStandardTextMessage(
+                                _( "Error" ),
+                                _( "Failed to hand off the turn over LAN. Check that the other player's game is running and listening, then retry by loading this save from the Load Game menu." ),
+                                Dialog::OK );
+                        }
+
+                        res = fheroes2::GameMode::LAN_WAITING;
+                        break;
+                    }
+
                     // Reset environment sounds and music theme at the beginning of the human turn
                     AudioManager::ResetAudio();
 
@@ -879,7 +925,7 @@ fheroes2::GameMode Interface::AdventureMap::StartGame()
                     _iconsPanel.showIcons( ICON_ANY );
                     _iconsPanel.setRedraw();
 
-                    res = HumanTurn( isLoadedFromSave );
+                    res = HumanTurn( isLoadedFromSave && !networkJustResumedThisRound );
 
                     // Skip resetting Audio after winning scenario because MUS::VICTORY should continue playing.
                     if ( res == fheroes2::GameMode::HIGHSCORES_STANDARD ) {
@@ -890,6 +936,7 @@ fheroes2::GameMode Interface::AdventureMap::StartGame()
                     AudioManager::ResetAudio();
 
                     break;
+                }
                 case CONTROL_AI:
                     // TODO: remove this temporary assertion
                     assert( res == fheroes2::GameMode::END_TURN );
@@ -974,6 +1021,7 @@ fheroes2::GameMode Interface::AdventureMap::StartGame()
             // Reset this after potential HumanTurn() call, but regardless of whether current kingdom
             // is vanquished - next alive kingdom should start a new day from scratch
             isLoadedFromSave = false;
+            networkJustResumedThisRound = false;
         }
 
         // We went through all the players, but the current player from the save file is still not found,

@@ -14,6 +14,7 @@
     <ClCompile Include="src\engine\localevent.cpp" />
     <ClCompile Include="src\engine\logging.cpp" />
     <ClCompile Include="src\engine\math_tools.cpp" />
+    <ClCompile Include="src\engine\network.cpp" />
     <ClCompile Include="src\engine\pal.cpp" />
     <ClCompile Include="src\engine\rand.cpp" />
     <ClCompile Include="src\engine\render_processor.cpp" />
@@ -142,6 +143,8 @@
     <ClCompile Include="src\fheroes2\game\game_intro.cpp" />
     <ClCompile Include="src\fheroes2\game\game_invalid_assets.cpp" />
     <ClCompile Include="src\fheroes2\game\game_io.cpp" />
+    <ClCompile Include="src\fheroes2\game\game_lan_setup.cpp" />
+    <ClCompile Include="src\fheroes2\game\game_lan_wait.cpp" />
     <ClCompile Include="src\fheroes2\game\game_loadgame.cpp" />
     <ClCompile Include="src\fheroes2\game\game_mainmenu.cpp" />
     <ClCompile Include="src\fheroes2\game\game_mainmenu_ui.cpp" />
@@ -233,6 +236,7 @@
     <ClCompile Include="src\fheroes2\monster\monster.cpp" />
     <ClCompile Include="src\fheroes2\monster\monster_anim.cpp" />
     <ClCompile Include="src\fheroes2\monster\monster_info.cpp" />
+    <ClCompile Include="src\fheroes2\network\lan_session.cpp" />
     <ClCompile Include="src\fheroes2\resource\artifact.cpp" />
     <ClCompile Include="src\fheroes2\resource\artifact_info.cpp" />
     <ClCompile Include="src\fheroes2\resource\artifact_ultimate.cpp" />
@@ -267,6 +271,7 @@
     <ClInclude Include="src\engine\logging.h" />
     <ClInclude Include="src\engine\math_base.h" />
     <ClInclude Include="src\engine\math_tools.h" />
+    <ClInclude Include="src\engine\network.h" />
     <ClInclude Include="src\engine\pal.h" />
     <ClInclude Include="src\engine\rand.h" />
     <ClInclude Include="src\engine\render_processor.h" />
@@ -365,6 +370,8 @@
     <ClInclude Include="src\fheroes2\game\game_intro.h" />
     <ClInclude Include="src\fheroes2\game\game_invalid_assets.h" />
     <ClInclude Include="src\fheroes2\game\game_io.h" />
+    <ClInclude Include="src\fheroes2\game\game_lan_setup.h" />
+    <ClInclude Include="src\fheroes2\game\game_lan_wait.h" />
     <ClInclude Include="src\fheroes2\game\game_language.h" />
     <ClInclude Include="src\fheroes2\game\game_mainmenu_ui.h" />
     <ClInclude Include="src\fheroes2\game\game_mode.h" />
@@ -453,6 +460,7 @@
     <ClInclude Include="src\fheroes2\monster\monster.h" />
     <ClInclude Include="src\fheroes2\monster\monster_anim.h" />
     <ClInclude Include="src\fheroes2\monster\monster_info.h" />
+    <ClInclude Include="src\fheroes2\network\lan_session.h" />
     <ClInclude Include="src\fheroes2\resource\artifact.h" />
     <ClInclude Include="src\fheroes2\resource\artifact_info.h" />
     <ClInclude Include="src\fheroes2\resource\artifact_ultimate.h" />
