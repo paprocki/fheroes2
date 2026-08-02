@@ -2106,23 +2106,30 @@ int Dialog::selectAdventureMiscellaneousObjectType( const int objectType )
     return selectObjectType( objectType, objectInfo.size(), listbox );
 }
 
-PlayerColor Dialog::selectPlayerColor( const PlayerColor color, const uint8_t availableColors )
+PlayerColor Dialog::selectPlayerColor( const PlayerColor color, const uint8_t availableColors, const std::string & title )
 {
     const int32_t stepX = 70;
     const int32_t minWidth = 250;
     const int32_t colorsWidth = 30 + stepX * ( Color::Count( availableColors ) + 1 );
+    const int32_t dialogWidth = std::max( minWidth, colorsWidth );
+    const int32_t textAreaWidth = dialogWidth - 20;
+
+    fheroes2::Text text( title.empty() ? _( "Select color:" ) : title, fheroes2::FontType::normalYellow() );
+    const int32_t textHeight = text.height( textAreaWidth );
+    // The dialog was originally sized assuming a single-line title - grow it to fit a longer,
+    // wrapped custom title.
+    const int32_t extraHeight = std::max( 0, textHeight - text.height() );
 
     fheroes2::Display & display = fheroes2::Display::instance();
 
-    fheroes2::StandardWindow background( std::max( minWidth, colorsWidth ), 160, true, display );
+    fheroes2::StandardWindow background( dialogWidth, 160 + extraHeight, true, display );
 
     const fheroes2::Rect & area = background.activeArea();
 
-    fheroes2::Text text( _( "Select color:" ), fheroes2::FontType::normalYellow() );
-    text.draw( area.x + ( area.width - text.width() ) / 2, area.y + 10, display );
+    text.draw( area.x + 10, area.y + 10, textAreaWidth, display );
 
     // Render color selection sprites.
-    fheroes2::Point pos( area.x + 20 + ( area.width - colorsWidth ) / 2, area.y + 40 );
+    fheroes2::Point pos( area.x + 20 + ( area.width - colorsWidth ) / 2, area.y + 20 + textHeight );
     const fheroes2::Sprite & colorSpriteBorderSelected = Assets::getImage( ICN::BRCREST, 6 );
     fheroes2::Sprite colorSpriteBorder( colorSpriteBorderSelected );
 

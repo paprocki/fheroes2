@@ -56,7 +56,9 @@ bool Game::LanSetupHotSeat()
         return true;
     }
 
-    const PlayerColor localColor = Dialog::selectPlayerColor( PlayerColor::NONE, static_cast<uint8_t>( humanColors ) );
+    const PlayerColor localColor = Dialog::selectPlayerColor(
+        PlayerColor::NONE, static_cast<uint8_t>( humanColors ),
+        _( "Which color will YOU play on this PC? Every other human color will need its own PC and IP address entered next." ) );
     if ( localColor == PlayerColor::NONE ) {
         // Cancelled.
         return false;
@@ -104,7 +106,9 @@ fheroes2::GameMode Game::JoinLanGame()
     // The host's map isn't loaded yet on this PC, so which colors are actually human-controlled
     // isn't known here - offer every color and trust the player to pick the one matching what the
     // host configured for them.
-    const PlayerColor localColor = Dialog::selectPlayerColor( PlayerColor::NONE, static_cast<uint8_t>( Color::allPlayerColors() ) );
+    const PlayerColor localColor = Dialog::selectPlayerColor(
+        PlayerColor::NONE, static_cast<uint8_t>( Color::allPlayerColors() ),
+        _( "Which color will YOU play on this PC? Pick the same color the host assigned you for this game." ) );
     if ( localColor == PlayerColor::NONE ) {
         // Cancelled.
         return fheroes2::GameMode::MAIN_MENU;
@@ -130,7 +134,8 @@ fheroes2::GameMode Game::JoinLanGame()
     uint8_t excludedColors = static_cast<uint8_t>( localColor );
     for ( int32_t i = 0; i < otherPlayerCount; ++i ) {
         const uint8_t availableColors = static_cast<uint8_t>( Color::allPlayerColors() ) & ~excludedColors;
-        const PlayerColor peerColor = Dialog::selectPlayerColor( PlayerColor::NONE, availableColors );
+        const PlayerColor peerColor = Dialog::selectPlayerColor(
+            PlayerColor::NONE, availableColors, _( "Which color does this OTHER human player play? You'll enter their IP address next." ) );
         if ( peerColor == PlayerColor::NONE ) {
             // Cancelled.
             return fheroes2::GameMode::MAIN_MENU;

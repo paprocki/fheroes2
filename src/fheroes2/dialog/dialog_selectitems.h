@@ -202,5 +202,8 @@ namespace Dialog
 
     int selectAdventureMiscellaneousObjectType( const int objectType );
 
-    PlayerColor selectPlayerColor( const PlayerColor color, const uint8_t availableColors );
+    // 'title', if non-empty, replaces the default "Select color:" prompt - useful when the same
+    // dialog is reused for meaningfully different purposes (e.g. picking your own color versus
+    // picking a remote peer's color).
+    PlayerColor selectPlayerColor( const PlayerColor color, const uint8_t availableColors, const std::string & title = {} );
 }
