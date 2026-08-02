@@ -117,6 +117,38 @@ fheroes2::GameMode Game::JoinLanGame()
 
     session.setLocalColor( localColor );
     session.setPort( static_cast<uint16_t>( port ) );
+
+    // Sending the turn onward (e.g. back to the host, or on to a third human player) needs a peer
+    // IP for every OTHER human color, exactly like the host configures in LanSetupHotSeat() - the
+    // map isn't loaded here, so this asks how many other human players there are rather than being
+    // able to enumerate the actual human colors.
+    int32_t otherPlayerCount = 1;
+    if ( !Dialog::SelectCount( _( "How many other human players are in this game?" ), 1, 5, otherPlayerCount ) ) {
+        return fheroes2::GameMode::MAIN_MENU;
+    }
+
+    uint8_t excludedColors = static_cast<uint8_t>( localColor );
+    for ( int32_t i = 0; i < otherPlayerCount; ++i ) {
+        const uint8_t availableColors = static_cast<uint8_t>( Color::allPlayerColors() ) & ~excludedColors;
+        const PlayerColor peerColor = Dialog::selectPlayerColor( PlayerColor::NONE, availableColors );
+        if ( peerColor == PlayerColor::NONE ) {
+            // Cancelled.
+            return fheroes2::GameMode::MAIN_MENU;
+        }
+
+        excludedColors |= static_cast<uint8_t>( peerColor );
+
+        std::string ip;
+        const std::string prompt = Color::String( peerColor ) + std::string( " " ) + _( "player's IP address:" );
+
+        if ( !Dialog::inputString( fheroes2::Text{}, fheroes2::Text{ prompt, fheroes2::FontType::normalWhite() }, ip, 15, false, {} ) || ip.empty() ) {
+            // Cancelled.
+            return fheroes2::GameMode::MAIN_MENU;
+        }
+
+        session.setPeerIp( peerColor, std::move( ip ) );
+    }
+
     session.setEnabled( true );
 
     return fheroes2::GameMode::LAN_WAITING;
