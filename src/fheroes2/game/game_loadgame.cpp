@@ -84,6 +84,11 @@ fheroes2::GameMode Game::LoadHotseat()
         return Game::JoinLanGame();
     }
 
+    if ( ListFiles::IsEmpty( GetSaveDir(), GetSaveFileExtension( Game::TYPE_HOTSEAT ) ) ) {
+        fheroes2::showStandardTextMessage( _( "Load Game" ), _( "No save files to load." ), Dialog::OK );
+        return fheroes2::GameMode::LOAD_GAME;
+    }
+
     return DisplayLoadGameDialog();
 }
 
@@ -188,12 +193,10 @@ fheroes2::GameMode Game::LoadGame()
         if ( buttonHotSeat.isEnabled() ) {
             buttonHotSeat.drawOnState( le.isMouseLeftButtonPressedAndHeldInArea( buttonHotSeat.area() ) );
             if ( le.MouseClickLeft( buttonHotSeat.area() ) || HotKeyPressEvent( HotKeyEvent::MAIN_MENU_HOTSEAT ) ) {
-                if ( ListFiles::IsEmpty( GetSaveDir(), GetSaveFileExtension( Game::TYPE_HOTSEAT ) ) ) {
-                    fheroes2::showStandardTextMessage( _( "Load Game" ), _( "No save files to load." ), Dialog::OK );
-                }
-                else {
-                    return fheroes2::GameMode::LOAD_HOT_SEAT;
-                }
+                // Unlike Standard/Campaign, Hot Seat can also join a LAN game, which needs no local
+                // save file to exist - so the "any saves on disk?" check happens inside LoadHotseat()
+                // itself, only for the "not joining a LAN game" path.
+                return fheroes2::GameMode::LOAD_HOT_SEAT;
             }
             if ( le.isMouseRightButtonPressedInArea( buttonHotSeat.area() ) ) {
                 fheroes2::showStandardTextMessage(
