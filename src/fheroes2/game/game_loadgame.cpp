@@ -84,6 +84,19 @@ fheroes2::GameMode Game::LoadHotseat()
         return Game::JoinLanGame();
     }
 
+    // LAN::Session lives only in memory, not on disk - if this PC's game was restarted since it last
+    // set up or joined a LAN Hot Seat game, that peer info is gone even though the game itself is
+    // still in progress. Offer to re-enter it now, right before picking a save to load, so this PC
+    // can keep sending its own turns onward afterwards.
+    const int reconfigureAnswer = fheroes2::showStandardTextMessage(
+        {},
+        _( "Reconfigure LAN peer settings before loading? Do this if you're continuing a LAN Hot Seat game and this PC's game was just (re)started - your color and the other players' IP addresses need to be entered again so future turns can still be sent. If this PC's LAN session is still active from before, answer No." ),
+        Dialog::YES | Dialog::NO );
+
+    if ( reconfigureAnswer == Dialog::YES ) {
+        Game::ReconfigureLanSession();
+    }
+
     if ( ListFiles::IsEmpty( GetSaveDir(), GetSaveFileExtension( Game::TYPE_HOTSEAT ) ) ) {
         fheroes2::showStandardTextMessage( _( "Load Game" ), _( "No save files to load." ), Dialog::OK );
         return fheroes2::GameMode::LOAD_GAME;

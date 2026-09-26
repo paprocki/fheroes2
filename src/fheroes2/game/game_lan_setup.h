@@ -41,4 +41,14 @@ namespace Game
     // locally and which port to listen on, then transitions to the "Waiting for LAN Turn" screen.
     // Returns fheroes2::GameMode::MAIN_MENU if the user cancels.
     fheroes2::GameMode JoinLanGame();
+
+    // Re-establishes LAN::Session (local color, port, peer IPs) without starting or waiting for a
+    // game - for a PC that already has a LAN Hot Seat game in progress but lost its session state
+    // because the game was restarted (LAN::Session lives only in memory, not on disk). Meant to be
+    // used right before loading an existing save from the normal Load Game file picker, so this PC
+    // can keep sending its own turns onward afterwards.
+    //
+    // Returns true if the session was configured successfully, false if the user cancelled - in
+    // which case the caller should proceed as if this had never been offered.
+    bool ReconfigureLanSession();
 }
