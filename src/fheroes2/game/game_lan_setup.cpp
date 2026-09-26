@@ -22,11 +22,13 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "color.h"
 #include "dialog.h"
 #include "dialog_selectitems.h"
 #include "game.h"
+#include "game_lan_lobby.h"
 #include "lan_session.h"
 #include "players.h"
 #include "settings.h"
@@ -114,7 +116,7 @@ bool Game::LanSetupHotSeat()
 
     const PlayerColor localColor = Dialog::selectPlayerColor(
         PlayerColor::NONE, static_cast<uint8_t>( humanColors ),
-        _( "Which color will YOU play on this PC? Every other human color will need its own PC and IP address entered next." ) );
+        _( "Which color will YOU play on this PC? Share your IP address with everyone else - they'll connect to you next." ) );
     if ( localColor == PlayerColor::NONE ) {
         // Cancelled.
         return false;
@@ -128,21 +130,16 @@ bool Game::LanSetupHotSeat()
     session.setLocalColor( localColor );
     session.setPort( static_cast<uint16_t>( port ) );
 
-    const PlayerColorsVector colors( humanColors );
-    for ( const PlayerColor color : colors ) {
-        if ( color == localColor ) {
-            continue;
+    std::vector<PlayerColor> pendingColors;
+    for ( const PlayerColor color : PlayerColorsVector( humanColors ) ) {
+        if ( color != localColor ) {
+            pendingColors.push_back( color );
         }
+    }
 
-        std::string ip;
-        const std::string prompt = Color::String( color ) + std::string( " " ) + _( "player's IP address:" );
-
-        if ( !Dialog::inputString( fheroes2::Text{}, fheroes2::Text{ prompt, fheroes2::FontType::normalWhite() }, ip, 15, false, {} ) || ip.empty() ) {
-            // Cancelled.
-            return false;
-        }
-
-        session.setPeerIp( color, std::move( ip ) );
+    if ( !Game::LanLobbyHost( pendingColors ) ) {
+        // Cancelled.
+        return false;
     }
 
     session.setEnabled( true );
@@ -159,7 +156,33 @@ fheroes2::GameMode Game::JoinLanGame()
 
     conf.SetGameType( Game::TYPE_HOTSEAT | Game::TYPE_NETWORK );
 
-    if ( !collectLanSessionInfo( session ) ) {
+    // The host's map isn't loaded yet on this PC, so which colors are actually human-controlled
+    // isn't known here - offer every color and trust the player to pick the one matching what the
+    // host configured for them.
+    const PlayerColor localColor = Dialog::selectPlayerColor(
+        PlayerColor::NONE, static_cast<uint8_t>( Color::allPlayerColors() ),
+        _( "Which color will YOU play on this PC? Pick the same color the host assigned you for this game." ) );
+    if ( localColor == PlayerColor::NONE ) {
+        // Cancelled.
+        return fheroes2::GameMode::MAIN_MENU;
+    }
+
+    std::string hostIp;
+    if ( !Dialog::inputString( fheroes2::Text{}, fheroes2::Text{ _( "Host's IP address:" ), fheroes2::FontType::normalWhite() }, hostIp, 15, false, {} )
+         || hostIp.empty() ) {
+        // Cancelled.
+        return fheroes2::GameMode::MAIN_MENU;
+    }
+
+    int32_t port = static_cast<int32_t>( LAN::defaultPort );
+    if ( !Dialog::SelectCount( _( "LAN port to use:" ), 1024, 65535, port ) ) {
+        return fheroes2::GameMode::MAIN_MENU;
+    }
+
+    session.setLocalColor( localColor );
+    session.setPort( static_cast<uint16_t>( port ) );
+
+    if ( !Game::LanLobbyConnect( hostIp, static_cast<uint16_t>( port ), localColor ) ) {
         return fheroes2::GameMode::MAIN_MENU;
     }
 

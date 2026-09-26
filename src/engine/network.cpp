@@ -293,6 +293,53 @@ namespace Network
         return sendOk;
     }
 
+    bool sendMessage( const std::string & host, const uint16_t port, const std::string & message )
+    {
+        if ( message.size() > maxPayloadSize ) {
+            return false;
+        }
+
+        const WinsockGuard winsockGuard;
+        if ( !winsockGuard.isValid() ) {
+            return false;
+        }
+
+        addrinfo hints{};
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_protocol = IPPROTO_TCP;
+
+        addrinfo * resolvedAddress = nullptr;
+        if ( getaddrinfo( host.c_str(), std::to_string( port ).c_str(), &hints, &resolvedAddress ) != 0 || resolvedAddress == nullptr ) {
+            return false;
+        }
+
+        const SocketHandle socketHandle = socket( resolvedAddress->ai_family, resolvedAddress->ai_socktype, resolvedAddress->ai_protocol );
+        if ( socketHandle == invalidSocket ) {
+            freeaddrinfo( resolvedAddress );
+            return false;
+        }
+
+        const bool connected = connectWithTimeout( socketHandle, resolvedAddress->ai_addr, static_cast<socklen_t>( resolvedAddress->ai_addrlen ), connectTimeoutSeconds );
+
+        freeaddrinfo( resolvedAddress );
+
+        if ( !connected ) {
+            closeSocket( socketHandle );
+            return false;
+        }
+
+        const uint32_t payloadSize = static_cast<uint32_t>( message.size() );
+        const uint32_t payloadSizeNetworkOrder = htonl( payloadSize );
+
+        const bool sendOk = sendAll( socketHandle, reinterpret_cast<const char *>( &payloadSizeNetworkOrder ), sizeof( payloadSizeNetworkOrder ) )
+                             && ( message.empty() || sendAll( socketHandle, message.data(), message.size() ) );
+
+        closeSocket( socketHandle );
+
+        return sendOk;
+    }
+
     LanListener::~LanListener()
     {
         stop();
@@ -448,6 +495,158 @@ namespace Network
 
         {
             const std::scoped_lock<std::mutex> lock( _resultMutex );
+            if ( _listenSocket != -1 ) {
+                closeSocket( static_cast<SocketHandle>( _listenSocket ) );
+                _listenSocket = -1;
+            }
+        }
+    }
+
+    LanMessageListener::~LanMessageListener()
+    {
+        stop();
+    }
+
+    bool LanMessageListener::start( const uint16_t port )
+    {
+        stop();
+
+        {
+            const std::scoped_lock<std::mutex> lock( _queueMutex );
+            _messageQueue.clear();
+        }
+
+        _errorFlag = false;
+        _stopRequested = false;
+
+        _thread = std::make_unique<std::thread>( &LanMessageListener::threadMain, this, port );
+
+        return true;
+    }
+
+    void LanMessageListener::stop()
+    {
+        if ( !_thread ) {
+            return;
+        }
+
+        _stopRequested = true;
+
+        {
+            const std::scoped_lock<std::mutex> lock( _queueMutex );
+            closeSocket( static_cast<SocketHandle>( _listenSocket ) );
+            _listenSocket = -1;
+        }
+
+        _thread->join();
+        _thread.reset();
+    }
+
+    bool LanMessageListener::pollMessage( std::string & outMessage, std::string & outSenderIp )
+    {
+        const std::scoped_lock<std::mutex> lock( _queueMutex );
+        if ( _messageQueue.empty() ) {
+            return false;
+        }
+
+        outMessage = std::move( _messageQueue.front().first );
+        outSenderIp = std::move( _messageQueue.front().second );
+        _messageQueue.pop_front();
+
+        return true;
+    }
+
+    bool LanMessageListener::hasError() const
+    {
+        return _errorFlag.load();
+    }
+
+    void LanMessageListener::threadMain( const uint16_t port )
+    {
+        const WinsockGuard winsockGuard;
+        if ( !winsockGuard.isValid() ) {
+            _errorFlag = true;
+            return;
+        }
+
+        const SocketHandle listenSocket = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
+        if ( listenSocket == invalidSocket ) {
+            _errorFlag = true;
+            return;
+        }
+
+        {
+            const int reuse = 1;
+#if defined( _WIN32 )
+            setsockopt( listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char *>( &reuse ), sizeof( reuse ) );
+#else
+            setsockopt( listenSocket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof( reuse ) );
+#endif
+        }
+
+        sockaddr_in serverAddress{};
+        serverAddress.sin_family = AF_INET;
+        serverAddress.sin_addr.s_addr = INADDR_ANY;
+        serverAddress.sin_port = htons( port );
+
+        if ( bind( listenSocket, reinterpret_cast<const sockaddr *>( &serverAddress ), sizeof( serverAddress ) ) != 0
+             || listen( listenSocket, 8 ) != 0 ) {
+            closeSocket( listenSocket );
+            _errorFlag = true;
+            return;
+        }
+
+        {
+            const std::scoped_lock<std::mutex> lock( _queueMutex );
+            _listenSocket = static_cast<std::intptr_t>( listenSocket );
+        }
+
+        while ( !_stopRequested ) {
+            sockaddr_in clientAddress{};
+            socklen_t clientAddressLength = sizeof( clientAddress );
+
+            const SocketHandle clientSocket = accept( listenSocket, reinterpret_cast<sockaddr *>( &clientAddress ), &clientAddressLength );
+            if ( clientSocket == invalidSocket ) {
+                // Either a real socket error, or stop() closed the listening socket to
+                // unblock us - either way, there is nothing more this thread can do.
+                break;
+            }
+
+            char addressBuffer[INET_ADDRSTRLEN] = {};
+            const char * addressText = inet_ntop( AF_INET, &clientAddress.sin_addr, addressBuffer, sizeof( addressBuffer ) );
+            const std::string senderIp = ( addressText != nullptr ) ? std::string( addressText ) : std::string();
+
+            uint32_t payloadSizeNetworkOrder = 0;
+            std::string message;
+            bool receivedOk = recvAll( clientSocket, reinterpret_cast<char *>( &payloadSizeNetworkOrder ), sizeof( payloadSizeNetworkOrder ) );
+
+            if ( receivedOk ) {
+                const uint32_t payloadSize = ntohl( payloadSizeNetworkOrder );
+                if ( payloadSize > maxPayloadSize ) {
+                    receivedOk = false;
+                }
+                else {
+                    message.resize( payloadSize );
+                    receivedOk = message.empty() || recvAll( clientSocket, message.data(), message.size() );
+                }
+            }
+
+            closeSocket( clientSocket );
+
+            if ( !receivedOk || senderIp.empty() ) {
+                // A malformed/interrupted message, or a peer address we couldn't format,
+                // shouldn't take down the listener - go back to accepting the next one.
+                continue;
+            }
+
+            {
+                const std::scoped_lock<std::mutex> lock( _queueMutex );
+                _messageQueue.emplace_back( std::move( message ), senderIp );
+            }
+        }
+
+        {
+            const std::scoped_lock<std::mutex> lock( _queueMutex );
             if ( _listenSocket != -1 ) {
                 closeSocket( static_cast<SocketHandle>( _listenSocket ) );
                 _listenSocket = -1;

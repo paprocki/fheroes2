@@ -28,10 +28,12 @@
 
 #include <atomic>
 #include <cstdint>
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <utility>
 
 namespace Network
 {
@@ -40,6 +42,11 @@ namespace Network
     // of filePath prefixed with its size, then closes the connection.
     // Returns false on any socket error, connect timeout, or if filePath can't be read.
     bool sendFile( const std::string & host, uint16_t port, const std::string & filePath );
+
+    // Same connect-with-timeout behavior as sendFile(), but sends a short text message
+    // instead of a file's contents. Used for the LAN lobby handshake (JOIN/ROSTER
+    // messages), not for turn hand-off.
+    bool sendMessage( const std::string & host, uint16_t port, const std::string & message );
 
     // Owns a background thread that listens on a TCP port and, for each incoming
     // connection, receives a size-prefixed payload and writes it to a fixed output
@@ -87,6 +94,54 @@ namespace Network
         // value so this header doesn't need to pull in platform socket headers. Guarded
         // by _resultMutex only for the brief moment stop() needs to close it from a
         // different thread than the one that created it.
+        std::intptr_t _listenSocket{ -1 };
+    };
+
+    // Owns a background thread that listens on a TCP port and, for each incoming
+    // connection, receives a short text message and queues it along with the sender's
+    // IP address (read from the connection itself, not from the message body - this is
+    // what lets a listener auto-detect a peer's real address). Unlike LanListener,
+    // multiple received messages are queued rather than the latest one overwriting the
+    // previous - this is what the LAN lobby handshake needs (many small JOIN messages
+    // arriving over time from different peers), whereas LanListener's "latest file
+    // wins" behavior is exactly right for turn hand-off.
+    class LanMessageListener
+    {
+    public:
+        LanMessageListener() = default;
+        LanMessageListener( const LanMessageListener & ) = delete;
+        ~LanMessageListener();
+
+        LanMessageListener & operator=( const LanMessageListener & ) = delete;
+
+        // Starts the background thread listening on 'port'. Returns false if the
+        // listening socket could not be created/bound.
+        bool start( uint16_t port );
+
+        // Stops the background thread, if running. Safe to call even if start() was
+        // never called or already failed/stopped.
+        void stop();
+
+        // Non-blocking. Returns true and fills outMessage/outSenderIp if a message was
+        // queued (removing it from the queue). Call repeatedly in a loop to drain more
+        // than one message per frame.
+        bool pollMessage( std::string & outMessage, std::string & outSenderIp );
+
+        // True if the background thread hit an unrecoverable socket error and is no
+        // longer listening.
+        bool hasError() const;
+
+    private:
+        void threadMain( uint16_t port );
+
+        std::unique_ptr<std::thread> _thread;
+        std::atomic<bool> _stopRequested{ false };
+        std::atomic<bool> _errorFlag{ false };
+
+        std::mutex _queueMutex;
+        std::deque<std::pair<std::string, std::string>> _messageQueue; // (message, senderIp)
+
+        // See LanListener::_listenSocket for why this is stored as a plain intptr_t.
         std::intptr_t _listenSocket{ -1 };
     };
 }

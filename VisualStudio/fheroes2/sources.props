@@ -143,6 +143,7 @@
     <ClCompile Include="src\fheroes2\game\game_intro.cpp" />
     <ClCompile Include="src\fheroes2\game\game_invalid_assets.cpp" />
     <ClCompile Include="src\fheroes2\game\game_io.cpp" />
+    <ClCompile Include="src\fheroes2\game\game_lan_lobby.cpp" />
     <ClCompile Include="src\fheroes2\game\game_lan_setup.cpp" />
     <ClCompile Include="src\fheroes2\game\game_lan_wait.cpp" />
     <ClCompile Include="src\fheroes2\game\game_loadgame.cpp" />
@@ -370,6 +371,7 @@
     <ClInclude Include="src\fheroes2\game\game_intro.h" />
     <ClInclude Include="src\fheroes2\game\game_invalid_assets.h" />
     <ClInclude Include="src\fheroes2\game\game_io.h" />
+    <ClInclude Include="src\fheroes2\game\game_lan_lobby.h" />
     <ClInclude Include="src\fheroes2\game\game_lan_setup.h" />
     <ClInclude Include="src\fheroes2\game\game_lan_wait.h" />
     <ClInclude Include="src\fheroes2\game\game_language.h" />
